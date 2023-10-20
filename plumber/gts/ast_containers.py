@@ -80,8 +80,8 @@ class GTS(ASTNode):
 		assert self.expression is not None
 		return (precondition_expanded, expression_expanded)
 
-	def codegen(self, generator: CodeGenerator, deterministic: Union[bool, str]) -> List[Tuple[str, str, str]]:
-		result: List[Tuple[str, str, str]] = []
+	def codegen(self, generator: CodeGenerator, deterministic: Union[bool, str]) -> List[Tuple[str, str, str, str]]:
+		result: List[Tuple[str, str, str, str]] = []
 
 		# if deterministic and state json file exists, recover mappings before starting
 		if deterministic is not False:
@@ -113,7 +113,7 @@ class GTS(ASTNode):
 			for directive in experiment:
 				directive.codegen(generator)
 			
-			result.append((generator.generate_setup(), generator.generate_main(), generator.generate_register_contents_json()))
+			result.append((generator.generate_setup(), generator.generate_main(), generator.generate_binary(), generator.generate_register_contents_json()))
 
 		# if deterministic, store the final state of code generation mappings
 		# in the specified json file
