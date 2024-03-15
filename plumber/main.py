@@ -1,7 +1,7 @@
 import argparse
+from random import choices
 import sys
 import os
-import shlex
 import shutil
 import subprocess
 # import configparser
@@ -77,7 +77,7 @@ def init_codegen_args(subparser):
                             help="architecture of the hardware"
                             " to generate testcases for")
 
-    gts_parser.add_argument("-b", "--binary", action="store_true",
+    gts_parser.add_argument("-b", "--binary", choices=['header', 'raw'],
                             default=False, help="generate binary equivalet of"
                             " the assembly instructions")
 
@@ -171,7 +171,6 @@ def generator(args):
             retry -= 1
 
     # create outdir if it does not exist
-    print(args.outdir)
     if args.outdir:
         if not os.path.exists(args.outdir):
             os.makedirs(args.outdir)
@@ -192,8 +191,20 @@ def generator(args):
                 code_main_file.write(code_main)
 
             if args.binary:
-                with open(os.path.join(codedir, "binary.txt"), "w") as code_binary_file:
-                    code_binary_file.write(code_binary)
+                bin_file = "binary.h" if args.binary == "header" else "binary.txt"
+                with open(os.path.join(codedir, bin_file), "w") as code_binary_file:
+                    if args.binary == "header":
+                        code_binary_file.write("#include <cstdint>\n");
+                        code_binary_file.write("#include <vector>\n\n");
+                        code_binary_file.write("static std::vector<std::uint32_t> testcase {\n");
+                        for instr in code_binary:
+                            if instr == "\n":
+                                code_binary_file.write("," + instr)
+                            else:
+                                code_binary_file.write(instr)
+                        code_binary_file.write("};")
+                    else:
+                        code_binary_file.write(code_binary)
 
             with open(os.path.join(codedir, "registers.json"),
                       "w") as registers_json_file:
@@ -270,7 +281,7 @@ def execute_concrete(testdir):
 
 
 def execute_symbolic(bitcode, ktest):
-    klee_command = ["../../vklee/build/bin/klee", "--search=priority", "--emit-all-errors",
+    klee_command = ["../../plumber-klee/build/bin/klee", "--search=priority", "--emit-all-errors",
                     "--posix-runtime", "--libcxx", "--libc=uclibc"]
 
     if ktest:
@@ -322,7 +333,8 @@ def compiler(args):
 
 def main():
     args = init_argparse().parse_args()
-    return args.func(args)
+    args.func(args)
+    return 0
 
 
 if __name__ == "__main__":

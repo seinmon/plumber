@@ -220,7 +220,7 @@ class CodeGenerator(metaclass=abc.ABCMeta):
     def _write_to_setup(self, codeline: str) -> None:
         self._write_to_dest(CGDestination.SETUP, codeline)
     def _write_to_bin(self, codeline: int) -> None:
-        self._write_to_dest(CGDestination.BINARY, str(codeline))
+        self._write_to_dest(CGDestination.BINARY, str(bin(codeline)))
     def _write_to_dest(self, destination: CGDestination, codeline: str) -> None:
         if not codeline[-1] == "\n":
             codeline += "\n"
@@ -558,15 +558,18 @@ class CodeGeneratorRV32(CodeGenerator):
     def _write_code_set_up_register(self, reg: str, value: int) -> None:
         self._write_to_setup(f"# {reg} = {value:016x}")
         self._write_to_setup(f"# {reg} = {value:0b}")
+        self._write_li(reg, value, CGDestination.SETUP)
+
+    def _write_li(self, reg: str, value: int, dest: CGDestination) -> None:
         reg_addr = int(reg[1:])
 
         if -2049 < value < 2048:
-            self._write_to_setup(f"addi {reg}, x0, {value}")
+            self._write_to_dest(dest, f"addi {reg}, x0, {value}")
             instr = 19 + (reg_addr << 7) + (value << 20)
             self._write_to_bin(instr)
 
         elif value % 0x1000 == 0:
-            self._write_to_setup(f"lui {reg}, {value}")
+            self._write_to_dest(dest, f"lui {reg}, {value}")
             instr = 55 + (reg_addr << 7) + (value << 12)
             self._write_to_bin(instr)
 
@@ -574,11 +577,11 @@ class CodeGeneratorRV32(CodeGenerator):
             h_value = (value + 1) >> 12
             l_value = value & 0xfff
 
-            self._write_to_setup(f"lui {reg}, {h_value}")
+            self._write_to_dest(dest, f"lui {reg}, {h_value}")
             instr = 55 + (reg_addr << 7) + (h_value << 12)
             self._write_to_bin(instr)
 
-            self._write_to_setup(f"addi {reg}, {reg}, {l_value}")
+            self._write_to_dest(dest, f"addi {reg}, {reg}, {l_value}")
             instr = 19 + (reg_addr << 7) + (reg_addr << 15) + (l_value << 20)
             self._write_to_bin(instr)
 
@@ -603,9 +606,7 @@ class CodeGeneratorRV32(CodeGenerator):
 
     def _write_code_main_store_int(self, offset: int, value: int) -> None:
         assert self.store_base_register is not None
-        self._write(f"addi x5, x0, {value}")
-        instr = 19 + (5 << 7) + ((value & 0xfff) << 20)
-        self._write_to_bin(instr)
+        self._write_li("x5", value, CGDestination.MAIN)
 
         self._write(f"sw x5, {offset}({self.store_base_register})")
         instr = 35 + ((offset & 0xf) << 7) + (2 << 12) + (5 << 15) \

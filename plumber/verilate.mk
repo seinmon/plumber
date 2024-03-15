@@ -4,7 +4,7 @@ export LLVM_CC_NAME=clang-11
 export LLVM_CXX_NAME=clang++-11
 
 PROJECT_ROOT := $(shell readlink -f ..)
-KLEE_BUILD_DIR := $(PROJECT_ROOT)/../vklee
+KLEE_BUILD_DIR := $(PROJECT_ROOT)/../plumber-klee
 VERILATOR_ROOT := ../../sydex/tools/verilator
 VERILATOR := $(VERILATOR_ROOT)/bin/verilator
 
