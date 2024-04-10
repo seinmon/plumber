@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 	from .ast_directives import DirectiveAttributeValueParts, Directive
 
 from .gts_lexer import GTSLexer
-from .ast_directives import ArithmeticOperator, DirectiveMemory, DirectiveNop, DirectiveBranch, DirectiveArithmetic, DirectiveStoreConditionOperand
+from .ast_directives import ArithmeticOperator, DirectiveMemory, DirectiveNop, DirectiveBranch, DirectiveArithmetic, DirectiveStoreConditionOperand, DirectiveCSR
 from .ast_operators import OperatorLoop, OperatorFuzz, OperatorSlide, OperatorSubset, OperatorShuffle, OperatorWildcard, OperatorMerge, OperatorRepetition
 from .ast_containers import GTS, Expression
 
@@ -96,7 +96,7 @@ class GTSParser:
 			return expression
 
 		def parse_directive() -> Directive:
-			# all directives start with a mandatory identifier: A, B, M, or N,
+			# all directives start with a mandatory identifier: A, B, M, C, or N,
 			# some of them followed by further attributes
 			tok = lex.token_or_error("IDENTIFIER")
 			if tok.value == "A":
@@ -107,11 +107,13 @@ class GTSParser:
 				return DirectiveStoreConditionOperand(parse_directive_attributes())
 			elif tok.value == "M":
 				return DirectiveMemory(parse_directive_attributes())
+			elif tok.value == "C":
+				return DirectiveCSR(parse_directive_attributes())
 			elif tok.value == "N":
 				return DirectiveNop()
 			else:
 				lex.error(tok, error="Token is not a valid directive identifier")
-			
+
 		def parse_directive_attributes() -> Dict[str, DirectiveAttributeValueParts]:
 			result: Dict[str, DirectiveAttributeValueParts] = dict()
 			if lex.peek_assert("UNDERSCORE"):

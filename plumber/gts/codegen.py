@@ -330,6 +330,9 @@ class CodeGenerator(metaclass=abc.ABCMeta):
         reg_addr: str = self._map_value_to_register(addr)
         self._write_code_memory_load(reg_addr)
 
+    def csr(self, read, csr, value) -> None:
+        self._write_code_csr(read, csr, value)
+
     def nop(self) -> None:
         self._write_code_nop()
 
@@ -407,6 +410,9 @@ class CodeGenerator(metaclass=abc.ABCMeta):
     def _write_code_nop(self) -> None:
         pass
     @abc.abstractmethod
+    def _write_code_csr(self, read, csr, value) -> None:
+        pass
+    @abc.abstractmethod
     def _write_code_set_up_register(self, reg: str, value: int) -> None:
         pass
     @abc.abstractmethod
@@ -459,6 +465,9 @@ class CodeGeneratorARMA64(CodeGenerator):
 
     def _write_code_memory_load(self, reg_source: str) -> None:
         self._write(f"ldr x0, [{reg_source}]")
+
+    def _write_code_csr(self) -> None:
+        raise Exception("ARM generator does not implement CSRs")
 
     def _write_code_nop(self) -> None:
         self._write("nop")
@@ -584,6 +593,15 @@ class CodeGeneratorRV32(CodeGenerator):
             self._write_to_dest(dest, f"addi {reg}, {reg}, {l_value}")
             instr = 19 + (reg_addr << 7) + (reg_addr << 15) + (l_value << 20)
             self._write_to_bin(instr)
+
+    def _write_code_csr(self, read: bool, csr: int, value: int) -> None:
+        rd = "x5" if read else "x0"
+        self._write(f"csrrwi {rd}, 0x{csr:x}, {value}")
+        instr = 0
+        # instr = 35 + ((offset & 0xf) << 7) + (2 << 12) + (5 << 15) \
+        #         + (int(self.store_base_register[1:]) << 20) \
+        #         + ((offset & 0xff0) << 25)
+        self._write_to_bin(instr)
 
     def _write_code_setup_store_base_register(self) -> None:
         self._write_to_setup("# Base address for memory stores")
