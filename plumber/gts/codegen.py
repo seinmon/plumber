@@ -596,11 +596,21 @@ class CodeGeneratorRV32(CodeGenerator):
 
     def _write_code_csr(self, read: bool, csr: int, value: int) -> None:
         rd = "x5" if read else "x0"
-        self._write(f"csrrwi {rd}, 0x{csr:x}, {value}")
-        instr = 0
-        # instr = 35 + ((offset & 0xf) << 7) + (2 << 12) + (5 << 15) \
-        #         + (int(self.store_base_register[1:]) << 20) \
-        #         + ((offset & 0xff0) << 25)
+        rs1 = 0
+        func3 = 0
+
+        if value < 31:
+            self._write(f"csrrwi {rd}, 0x{csr:x}, {value}")
+            rs1 = value
+            func3 = 1
+        else:
+            self._write_li("x6", value, CGDestination.MAIN)
+            self._write(f"csrrw {rd}, 0x{csr:x}, x6")
+            rs1 = 6
+            func3 = 5
+
+        instr = 115 + (int(rd[1:]) << 7) + (func3 << 12) + (rs1 << 15) \
+                + (csr << 20)
         self._write_to_bin(instr)
 
     def _write_code_setup_store_base_register(self) -> None:
